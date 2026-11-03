@@ -1,0 +1,22 @@
+id: DET-0003
+name: Scheduled Task Created With Suspicious Action
+status: stable
+severity: medium
+mitre: [T1053.005]
+data_sources: [windows_security]
+description: >
+  A scheduled task was registered (Security 4698) whose action runs a script interpreter or a
+  binary from a user-writable path. Requires "Audit Other Object Access Events".
+search: |
+  index=wineventlog sourcetype="WinEventLog:Security" EventCode=4698
+  | rex field=Message "(?s)<Command>(?<task_command>[^<]+)</Command>"
+  | search task_command IN ("*cmd.exe*", "*powershell*", "*wscript*", "*cscript*", "*mshta*", "*\\AppData\\*", "*\\Temp\\*", "*\\Users\\Public\\*")
+  | stats count values(task_command) as task_command by host, Task_Name, Account_Name
+schedule: {cron: "*/15 * * * *", earliest: -20m, latest: now}
+false_positives:
+  - Software updaters registering tasks in AppData (Teams, Chrome, OneDrive)
+tuning: []
+tests:
+  - {type: atomic, technique: T1053.005, test_name: Scheduled Task Startup Script}
+references:
+  - https://attack.mitre.org/techniques/T1053/005/

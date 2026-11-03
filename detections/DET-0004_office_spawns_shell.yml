@@ -1,0 +1,22 @@
+id: DET-0004
+name: Office Application Spawning a Shell
+status: experimental
+severity: high
+mitre: [T1204.002, T1566.001]
+data_sources: [sysmon]
+description: >
+  Word, Excel, PowerPoint or Outlook started a command interpreter or LOLBin, typical of a
+  malicious macro or phishing attachment.
+search: |
+  index=sysmon EventCode=1
+    ParentImage IN ("*\\winword.exe", "*\\excel.exe", "*\\powerpnt.exe", "*\\outlook.exe")
+    Image IN ("*\\cmd.exe", "*\\powershell.exe", "*\\pwsh.exe", "*\\wscript.exe", "*\\cscript.exe", "*\\mshta.exe", "*\\rundll32.exe", "*\\regsvr32.exe")
+  | stats count values(CommandLine) as command_line by host, User, ParentImage, Image
+schedule: {cron: "*/5 * * * *", earliest: -10m, latest: now}
+false_positives:
+  - Legitimate business macros (document the add-in and exclude by CommandLine)
+tuning: []
+tests:
+  - {type: manual, technique: T1204.002, test_name: "Open a test .docm whose AutoOpen macro runs cmd.exe /c whoami"}
+references:
+  - https://attack.mitre.org/techniques/T1204/002/

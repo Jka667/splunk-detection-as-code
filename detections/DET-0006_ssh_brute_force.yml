@@ -1,0 +1,22 @@
+id: DET-0006
+name: SSH Brute Force From Single Source
+status: stable
+severity: medium
+mitre: [T1110.001]
+data_sources: [linux_secure]
+description: >
+  20 or more failed SSH logins from one source IP within 5 minutes.
+search: |
+  index=linux sourcetype=linux_secure "Failed password"
+  | rex "Failed password for (invalid user )?(?<target_user>\S+) from (?<src_ip>\d{1,3}(\.\d{1,3}){3})"
+  | bin _time span=5m
+  | stats count dc(target_user) as users_tried values(target_user) as target_users by _time, host, src_ip
+  | where count >= 20
+schedule: {cron: "*/10 * * * *", earliest: -15m, latest: now}
+false_positives:
+  - Vulnerability scanners (exclude scanner IPs via a lookup)
+tuning: []
+tests:
+  - {type: manual, technique: T1110.001, test_name: "hydra -l testuser -P rockyou-top100.txt ssh://<linux-vm> from the attacker VM"}
+references:
+  - https://attack.mitre.org/techniques/T1110/001/

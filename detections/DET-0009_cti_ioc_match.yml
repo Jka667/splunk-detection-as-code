@@ -1,0 +1,24 @@
+id: DET-0009
+name: Network Activity Matching CTI Indicators
+status: stable
+severity: high
+mitre: [T1071]
+data_sources: [sysmon, cti_iocs_lookup]
+description: >
+  DNS queries (Sysmon 22) or outbound connections (Sysmon 3) to an IP or domain from the CTI
+  lookup built from STIX/TAXII feeds by cti-stix-to-splunk.
+search: |
+  index=sysmon (EventCode=3 OR EventCode=22)
+  | eval indicator=lower(coalesce(QueryName, DestinationIp))
+  | lookup cti_iocs indicator OUTPUT type AS ioc_type stix_id ioc_source mitre AS cti_mitre
+  | where isnotnull(stix_id)
+  | stats count min(_time) as first_seen values(Image) as process by host, indicator, ioc_type, ioc_source, stix_id, cti_mitre
+  | convert ctime(first_seen)
+schedule: {cron: "*/10 * * * *", earliest: -15m, latest: now}
+false_positives:
+  - Stale indicators (shared hosting / CDN IPs); expire them with valid_until in the feed
+tuning: []
+tests:
+  - {type: manual, technique: T1071, test_name: "Resolve-DnsName update-check.example (indicator from the sample STIX bundle)"}
+references:
+  - https://github.com/Jka667/cti-stix-to-splunk

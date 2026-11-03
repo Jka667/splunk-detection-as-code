@@ -1,0 +1,23 @@
+id: DET-0002
+name: Suspicious LSASS Memory Access
+status: stable
+severity: critical
+mitre: [T1003.001]
+data_sources: [sysmon]
+description: >
+  A process opened lsass.exe with access rights typical of credential dumping tools
+  (procdump, comsvcs.dll MiniDump, Mimikatz).
+search: |
+  index=sysmon EventCode=10 TargetImage="*\\lsass.exe"
+    GrantedAccess IN ("0x1010", "0x1410", "0x1438", "0x143a", "0x1fffff")
+    NOT SourceImage IN ("*\\MsMpEng.exe", "*\\csrss.exe", "*\\wininit.exe", "*\\wmiprvse.exe")
+  | stats count values(GrantedAccess) as granted_access min(_time) as first_seen by host, SourceImage, SourceUser
+  | convert ctime(first_seen)
+schedule: {cron: "*/5 * * * *", earliest: -10m, latest: now}
+false_positives:
+  - EDR / AV agents not yet in the exclusion list
+tuning: []
+tests:
+  - {type: atomic, technique: T1003.001, test_name: Dump LSASS.exe Memory using comsvcs.dll}
+references:
+  - https://attack.mitre.org/techniques/T1003/001/

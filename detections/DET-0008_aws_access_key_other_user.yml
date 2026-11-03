@@ -1,0 +1,23 @@
+id: DET-0008
+name: AWS Access Key Created For Another User
+status: stable
+severity: high
+mitre: [T1098.001]
+data_sources: [aws_cloudtrail]
+description: >
+  An identity created an access key for a different IAM user, a common persistence technique
+  after account compromise.
+search: |
+  index=aws sourcetype=aws:cloudtrail eventName=CreateAccessKey errorCode!=*
+  | eval actor='userIdentity.arn', target_user='requestParameters.userName'
+  | where isnotnull(target_user) AND NOT like(actor, "%/" . target_user)
+  | stats count values(sourceIPAddress) as src_ip by actor, target_user, awsRegion
+schedule: {cron: "*/15 * * * *", earliest: -20m, latest: now}
+false_positives:
+  - Automation / IAM provisioning roles (exclude by actor)
+tuning: []
+tests:
+  - {type: stratus, technique: T1098.001, test_name: aws.persistence.iam-backdoor-user}
+references:
+  - https://attack.mitre.org/techniques/T1098/001/
+  - https://stratus-red-team.cloud/attack-techniques/AWS/aws.persistence.iam-backdoor-user/

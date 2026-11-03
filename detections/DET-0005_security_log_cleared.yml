@@ -1,0 +1,20 @@
+id: DET-0005
+name: Windows Security Event Log Cleared
+status: stable
+severity: high
+mitre: [T1070.001]
+data_sources: [windows_security]
+description: >
+  The Security event log was cleared (1102), usually to remove evidence after an intrusion.
+search: |
+  index=wineventlog sourcetype="WinEventLog:Security" EventCode=1102
+  | stats count min(_time) as first_seen by host, Account_Name
+  | convert ctime(first_seen)
+schedule: {cron: "*/5 * * * *", earliest: -10m, latest: now}
+false_positives:
+  - Lab re-imaging or documented admin maintenance
+tuning: []
+tests:
+  - {type: atomic, technique: T1070.001, test_name: Clear Logs}
+references:
+  - https://attack.mitre.org/techniques/T1070/001/

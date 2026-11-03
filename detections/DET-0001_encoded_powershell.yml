@@ -1,0 +1,22 @@
+id: DET-0001
+name: Encoded PowerShell Command
+status: stable
+severity: high
+mitre: [T1059.001, T1027]
+data_sources: [sysmon]
+description: >
+  PowerShell started with an encoded command line (-enc / -EncodedCommand), a common way to hide
+  malicious scripts from command-line logging.
+search: |
+  index=sysmon EventCode=1 (Image="*\\powershell.exe" OR Image="*\\pwsh.exe")
+    (CommandLine="* -e *" OR CommandLine="* -en*" OR CommandLine="* -EncodedCommand*")
+  | stats count min(_time) as first_seen max(_time) as last_seen values(CommandLine) as command_line by host, User, ParentImage
+  | convert ctime(first_seen) ctime(last_seen)
+schedule: {cron: "*/15 * * * *", earliest: -20m, latest: now}
+false_positives:
+  - Software deployment / RMM tools that wrap scripts in base64 (review ParentImage)
+tuning: []
+tests:
+  - {type: atomic, technique: T1059.001, test_name: PowerShell Command Execution}
+references:
+  - https://attack.mitre.org/techniques/T1059/001/

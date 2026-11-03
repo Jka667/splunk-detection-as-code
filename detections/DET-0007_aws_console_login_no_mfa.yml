@@ -1,0 +1,21 @@
+id: DET-0007
+name: AWS Console Login Without MFA
+status: stable
+severity: medium
+mitre: [T1078.004]
+data_sources: [aws_cloudtrail]
+description: >
+  Successful AWS console login by an IAM user without MFA, a sign of stolen or weak credentials.
+search: |
+  index=aws sourcetype=aws:cloudtrail eventName=ConsoleLogin
+    "responseElements.ConsoleLogin"=Success "additionalEventData.MFAUsed"=No
+    "userIdentity.type"=IAMUser
+  | stats count values(sourceIPAddress) as src_ip values(userAgent) as user_agent by "userIdentity.arn", awsRegion
+schedule: {cron: "*/15 * * * *", earliest: -20m, latest: now}
+false_positives:
+  - Break-glass accounts during a documented incident
+tuning: []
+tests:
+  - {type: manual, technique: T1078.004, test_name: "Log in to the console as a test IAM user without MFA"}
+references:
+  - https://attack.mitre.org/techniques/T1078/004/
